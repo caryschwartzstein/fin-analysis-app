@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     # Enable fallback to yfinance if other providers fail
     enable_fallback: bool = True
 
+    # Schwab OAuth Configuration
+    schwab_app_key: Optional[str] = None
+    schwab_app_secret: Optional[str] = None
+    schwab_redirect_uri: Optional[str] = None
+    schwab_encryption_key: Optional[str] = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
