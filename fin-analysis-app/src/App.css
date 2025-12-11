@@ -90,7 +90,13 @@
   color: #c33;
   padding: 1rem;
   border-radius: 5px;
-  text-align: center;
+  text-align: left;
+}
+
+.error-message strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
 }
 
 .metrics-container {

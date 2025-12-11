@@ -3,6 +3,7 @@ from typing import Optional, Dict, Any, Literal
 from services.polygon_service import polygon_service
 from services.yfinance_service import yfinance_service
 from services.alphavantage_service import alphavantage_service
+from services.exceptions import RateLimitError, DataNotFoundError, APIKeyError, FinancialDataError
 from config import settings
 
 
@@ -110,8 +111,31 @@ class FinancialDataService:
 
             return None, None
 
+        except (RateLimitError, APIKeyError) as e:
+            # Don't fallback on rate limit or API key errors - these need user attention
+            print(f"Error with {selected_provider}: {e.message}")
+            raise
+
+        except DataNotFoundError as e:
+            # Data not found - try fallback if enabled
+            print(f"Data not found with {selected_provider}: {e.message}")
+
+            if settings.enable_fallback and selected_provider != "yfinance":
+                print(f"Falling back to yfinance due to data not found.")
+                try:
+                    fallback_data = self.yfinance.get_financials(ticker, timeframe, limit)
+                    if fallback_data:
+                        return fallback_data, "yfinance"
+                except Exception as fallback_error:
+                    print(f"Fallback to yfinance also failed: {fallback_error}")
+                    # Re-raise the original DataNotFoundError if fallback also fails
+                    raise e
+
+            # No fallback available or fallback failed
+            raise
+
         except Exception as e:
-            print(f"Error with {selected_provider}: {e}")
+            print(f"Unexpected error with {selected_provider}: {e}")
 
             # Fallback to yfinance if enabled and not already using it
             if settings.enable_fallback and selected_provider != "yfinance":
@@ -123,7 +147,12 @@ class FinancialDataService:
                 except Exception as fallback_error:
                     print(f"Fallback to yfinance also failed: {fallback_error}")
 
-            return None, None
+            # Wrap unknown errors in FinancialDataError
+            raise FinancialDataError(
+                f"Failed to get financials for {ticker}: {str(e)}",
+                provider=selected_provider,
+                original_error=e
+            )
 
     def extract_income_statement(
         self,
@@ -194,8 +223,28 @@ class FinancialDataService:
 
             return None, None
 
+        except (RateLimitError, APIKeyError) as e:
+            # Don't fallback on rate limit or API key errors
+            print(f"Error getting ticker details with {selected_provider}: {e.message}")
+            raise
+
+        except DataNotFoundError as e:
+            print(f"Ticker details not found with {selected_provider}: {e.message}")
+
+            # Try fallback if enabled
+            if settings.enable_fallback and selected_provider != "yfinance":
+                try:
+                    fallback_data = self.yfinance.get_ticker_details(ticker)
+                    if fallback_data:
+                        return fallback_data, "yfinance"
+                except Exception as fallback_error:
+                    print(f"Fallback ticker details also failed: {fallback_error}")
+                    raise e
+
+            raise
+
         except Exception as e:
-            print(f"Error getting ticker details with {selected_provider}: {e}")
+            print(f"Unexpected error getting ticker details with {selected_provider}: {e}")
 
             # Fallback to yfinance if enabled
             if settings.enable_fallback and selected_provider != "yfinance":
@@ -206,7 +255,11 @@ class FinancialDataService:
                 except Exception as fallback_error:
                     print(f"Fallback ticker details also failed: {fallback_error}")
 
-            return None, None
+            raise FinancialDataError(
+                f"Failed to get ticker details for {ticker}: {str(e)}",
+                provider=selected_provider,
+                original_error=e
+            )
 
 
 # Create a single instance to be used throughout the app
