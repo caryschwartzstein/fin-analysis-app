@@ -3,6 +3,7 @@ import time
 from typing import Optional, Dict, Any
 from alpha_vantage.fundamentaldata import FundamentalData
 from config import settings
+from services.exceptions import RateLimitError, DataNotFoundError, APIKeyError
 
 
 class AlphaVantageService:
@@ -90,7 +91,10 @@ class AlphaVantageService:
 
             # Check if data is available
             if income_df.empty or balance_df.empty:
-                return None
+                raise DataNotFoundError(
+                    f"No financial data available for ticker {ticker}",
+                    provider="alphavantage"
+                )
 
             # Alpha Vantage returns DataFrames with rows as periods and columns as fields
             # Convert to our format (list of periods)
@@ -124,9 +128,35 @@ class AlphaVantageService:
 
             return results if results else None
 
+        except (RateLimitError, DataNotFoundError, APIKeyError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
+            error_msg = str(e).lower()
+
+            # Check for rate limit errors
+            if "rate limit" in error_msg or "premium" in error_msg or "25 requests" in error_msg:
+                raise RateLimitError(
+                    "Alpha Vantage API rate limit exceeded (25 requests/day). Please try again tomorrow or use a different provider.",
+                    provider="alphavantage",
+                    original_error=e
+                )
+
+            # Check for API key errors
+            if "api key" in error_msg or "invalid" in error_msg:
+                raise APIKeyError(
+                    f"Alpha Vantage API key error: {str(e)}",
+                    provider="alphavantage",
+                    original_error=e
+                )
+
+            # Generic error - include the original message
             print(f"Error fetching financials from Alpha Vantage for {ticker}: {e}")
-            return None
+            raise DataNotFoundError(
+                f"Alpha Vantage error for {ticker}: {str(e)}",
+                provider="alphavantage",
+                original_error=e
+            )
 
     def extract_income_statement(self, financial_data: Dict[str, Any]) -> Dict[str, Any]:
         """

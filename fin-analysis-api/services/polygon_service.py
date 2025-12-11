@@ -1,6 +1,7 @@
 import requests
 from typing import Optional, Dict, Any
 from config import settings
+from services.exceptions import RateLimitError, DataNotFoundError, APIKeyError, FinancialDataError
 
 
 class PolygonService:
@@ -46,11 +47,62 @@ class PolygonService:
             data = response.json()
             results = data.get("results", [])
 
-            return results if results else None
+            if not results:
+                raise DataNotFoundError(
+                    f"No financial data available for ticker {ticker}. The ticker may be invalid or data is not available from Polygon.",
+                    provider="polygon"
+                )
 
+            return results
+
+        except requests.exceptions.HTTPError as e:
+            # Handle HTTP errors
+            if e.response.status_code == 401:
+                raise APIKeyError(
+                    "Invalid Polygon API key. Please check your API key configuration.",
+                    provider="polygon",
+                    original_error=e
+                )
+            elif e.response.status_code == 429:
+                raise RateLimitError(
+                    "Polygon API rate limit exceeded. Please upgrade your plan or wait before retrying.",
+                    provider="polygon",
+                    original_error=e
+                )
+            elif e.response.status_code == 404:
+                raise DataNotFoundError(
+                    f"Ticker {ticker} not found in Polygon database.",
+                    provider="polygon",
+                    original_error=e
+                )
+            else:
+                raise FinancialDataError(
+                    f"Polygon API error (HTTP {e.response.status_code}): {str(e)}",
+                    provider="polygon",
+                    original_error=e
+                )
+        except requests.exceptions.Timeout:
+            raise FinancialDataError(
+                "Request to Polygon API timed out. Please try again.",
+                provider="polygon",
+                original_error=e
+            )
+        except requests.exceptions.ConnectionError as e:
+            raise FinancialDataError(
+                f"Connection error to Polygon API: {str(e)}",
+                provider="polygon",
+                original_error=e
+            )
+        except DataNotFoundError:
+            # Re-raise our custom exception
+            raise
         except Exception as e:
             print(f"Error fetching financials for {ticker}: {e}")
-            return None
+            raise FinancialDataError(
+                f"Polygon error for {ticker}: {str(e)}",
+                provider="polygon",
+                original_error=e
+            )
 
     def extract_income_statement(self, financial_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -175,6 +227,12 @@ class PolygonService:
             data = response.json()
             results = data.get("results", {})
 
+            if not results:
+                raise DataNotFoundError(
+                    f"No ticker details found for {ticker} in Polygon database.",
+                    provider="polygon"
+                )
+
             return {
                 "ticker": ticker.upper(),
                 "market_cap": results.get("market_cap"),
@@ -182,9 +240,52 @@ class PolygonService:
                 "weighted_shares_outstanding": results.get("weighted_shares_outstanding"),
             }
 
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 401:
+                raise APIKeyError(
+                    "Invalid Polygon API key. Please check your API key configuration.",
+                    provider="polygon",
+                    original_error=e
+                )
+            elif e.response.status_code == 429:
+                raise RateLimitError(
+                    "Polygon API rate limit exceeded. Please upgrade your plan or wait before retrying.",
+                    provider="polygon",
+                    original_error=e
+                )
+            elif e.response.status_code == 404:
+                raise DataNotFoundError(
+                    f"Ticker {ticker} not found in Polygon database.",
+                    provider="polygon",
+                    original_error=e
+                )
+            else:
+                raise FinancialDataError(
+                    f"Polygon API error (HTTP {e.response.status_code}): {str(e)}",
+                    provider="polygon",
+                    original_error=e
+                )
+        except requests.exceptions.Timeout as e:
+            raise FinancialDataError(
+                "Request to Polygon API timed out. Please try again.",
+                provider="polygon",
+                original_error=e
+            )
+        except requests.exceptions.ConnectionError as e:
+            raise FinancialDataError(
+                f"Connection error to Polygon API: {str(e)}",
+                provider="polygon",
+                original_error=e
+            )
+        except DataNotFoundError:
+            raise
         except Exception as e:
             print(f"Error fetching ticker details for {ticker}: {e}")
-            return None
+            raise FinancialDataError(
+                f"Unable to get ticker details for {ticker} from Polygon: {str(e)}",
+                provider="polygon",
+                original_error=e
+            )
 
     def get_ratios(
         self,

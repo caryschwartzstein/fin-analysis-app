@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, Literal
 from pydantic import BaseModel
 from services.financial_data_service import financial_data_service
+from services.exceptions import RateLimitError, DataNotFoundError, APIKeyError, FinancialDataError
 
 
 router = APIRouter(prefix="/api/v1", tags=["Financial Data"])
@@ -281,12 +282,32 @@ async def get_financial_data(
             roce_percent=f"{roce * 100:.2f}%" if roce else None
         )
 
+    except RateLimitError as e:
+        raise HTTPException(
+            status_code=429,
+            detail=f"{e.message} (Provider: {e.provider})"
+        )
+    except APIKeyError as e:
+        raise HTTPException(
+            status_code=401,
+            detail=f"{e.message} (Provider: {e.provider})"
+        )
+    except DataNotFoundError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=f"{e.message} (Provider: {e.provider})"
+        )
+    except FinancialDataError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"{e.message} (Provider: {e.provider})"
+        )
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Error fetching financial data for {ticker}: {str(e)}"
+            detail=f"Unexpected error fetching financial data for {ticker}: {str(e)}"
         )
 
 
@@ -456,10 +477,30 @@ async def get_stock_metrics(
             notes=notes
         )
 
+    except RateLimitError as e:
+        raise HTTPException(
+            status_code=429,
+            detail=f"{e.message} (Provider: {e.provider})"
+        )
+    except APIKeyError as e:
+        raise HTTPException(
+            status_code=401,
+            detail=f"{e.message} (Provider: {e.provider})"
+        )
+    except DataNotFoundError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=f"{e.message} (Provider: {e.provider})"
+        )
+    except FinancialDataError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"{e.message} (Provider: {e.provider})"
+        )
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Error processing metrics for {ticker}: {str(e)}"
+            detail=f"Unexpected error processing metrics for {ticker}: {str(e)}"
         )

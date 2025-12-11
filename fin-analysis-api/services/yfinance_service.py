@@ -2,6 +2,7 @@ import yfinance as yf
 import pandas as pd
 import time
 from typing import Optional, Dict, Any
+from services.exceptions import RateLimitError, DataNotFoundError, FinancialDataError
 
 
 class YFinanceService:
@@ -62,7 +63,10 @@ class YFinanceService:
 
             # Check if data is available
             if income_stmt.empty or balance_sheet.empty:
-                return None
+                raise DataNotFoundError(
+                    f"No financial data available for ticker {ticker}. The ticker may be invalid or data is not available from Yahoo Finance.",
+                    provider="yfinance"
+                )
             print(f"GOT HERE 3 {ticker} {timeframe} {limit}")
             # yfinance returns DataFrames with columns as dates
             # We need to convert to list format similar to Polygon
@@ -91,9 +95,41 @@ class YFinanceService:
 
             return results if results else None
 
+        except DataNotFoundError:
+            # Re-raise our custom exception
+            raise
         except Exception as e:
+            error_msg = str(e).lower()
+
+            # Capture any printed output that might contain rate limit info
+            import sys
+            import io
+
+            # Check for rate limit errors from Yahoo Finance
+            # Note: yfinance sometimes prints "429" errors but raises JSONDecodeError
+            if ("rate limit" in error_msg or "too many requests" in error_msg or "429" in error_msg or
+                "expecting value" in error_msg):  # JSONDecodeError often indicates rate limiting
+                raise RateLimitError(
+                    "Yahoo Finance rate limit exceeded. Please wait a few minutes and try again. Consider using a different provider (alphavantage) if this persists.",
+                    provider="yfinance",
+                    original_error=e
+                )
+
+            # Check for connection/network errors
+            if "connection" in error_msg or "timeout" in error_msg or "network" in error_msg:
+                raise FinancialDataError(
+                    f"Network error connecting to Yahoo Finance: {str(e)}",
+                    provider="yfinance",
+                    original_error=e
+                )
+
+            # Generic error
             print(f"Error fetching financials for {ticker}: {e}")
-            return None
+            raise DataNotFoundError(
+                f"Yahoo Finance error for {ticker}: {str(e)}",
+                provider="yfinance",
+                original_error=e
+            )
 
     def extract_income_statement(self, financial_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -241,8 +277,32 @@ class YFinanceService:
                 return result
 
         except Exception as e:
+            error_msg = str(e).lower()
+
+            # Check for rate limit errors
+            # Note: yfinance sometimes prints "429" errors but raises JSONDecodeError
+            if ("rate limit" in error_msg or "too many requests" in error_msg or "429" in error_msg or
+                "expecting value" in error_msg):  # JSONDecodeError often indicates rate limiting
+                raise RateLimitError(
+                    "Yahoo Finance rate limit exceeded. Please wait a few minutes and try again. Consider using a different provider (alphavantage) if this persists.",
+                    provider="yfinance",
+                    original_error=e
+                )
+
+            # Check for connection/network errors
+            if "connection" in error_msg or "timeout" in error_msg or "network" in error_msg:
+                raise FinancialDataError(
+                    f"Network error connecting to Yahoo Finance: {str(e)}",
+                    provider="yfinance",
+                    original_error=e
+                )
+
             print(f"Error fetching ticker details for {ticker}: {e}")
-            return None
+            raise DataNotFoundError(
+                f"Unable to get ticker details for {ticker} from Yahoo Finance: {str(e)}",
+                provider="yfinance",
+                original_error=e
+            )
 
     @staticmethod
     def _safe_get(data_dict: Dict, key: str) -> Optional[float]:
