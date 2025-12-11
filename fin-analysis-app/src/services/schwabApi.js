@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://127.0.0.1:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://127.0.0.1:8000';
 
 export const getSchwabAuthUrl = async () => {
   const response = await fetch(`${API_BASE_URL}/api/v1/oauth/connect`, {

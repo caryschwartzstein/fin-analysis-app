@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import financial_data, schwab_oauth
+from config import settings
 
 # Create FastAPI app
 app = FastAPI(
@@ -9,10 +10,10 @@ app = FastAPI(
     version="3.0.0"
 )
 
-# Configure CORS (adjust origins as needed for your use case)
+# Configure CORS using environment variable
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:5174", "http://localhost:8000"],  # Add your frontend origins
+    allow_origins=settings.cors_origins.split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
