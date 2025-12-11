@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { getStockMetrics } from './services/api';
 import MetricsDisplay from './components/MetricsDisplay';
 import LoadingSpinner from './components/LoadingSpinner';
+import SchwabConnect from './components/SchwabConnect';
 import './App.css';
 
 function App() {
@@ -36,6 +37,7 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>Financial Analysis Dashboard</h1>
+        <SchwabConnect />
       </header>
 
       <main className="app-main">
