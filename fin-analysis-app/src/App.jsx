@@ -3,6 +3,8 @@ import { getStockMetrics } from './services/api';
 import MetricsDisplay from './components/MetricsDisplay';
 import LoadingSpinner from './components/LoadingSpinner';
 import SchwabConnect from './components/SchwabConnect';
+import SchwabQuote from './components/SchwabQuote';
+import { Box, Divider } from '@mui/material';
 import './App.css';
 
 function App() {
@@ -41,7 +43,22 @@ function App() {
       </header>
 
       <main className="app-main">
-        <form className="input-form" onSubmit={handleSubmit}>
+        {/* Schwab Real-Time Quotes Section */}
+        <Box sx={{ mb: 4, p: 3, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
+          <h2 style={{ marginTop: 0, marginBottom: '1rem', color: '#667eea' }}>
+            📈 Schwab Real-Time Quotes
+          </h2>
+          <SchwabQuote />
+        </Box>
+
+        <Divider sx={{ my: 4 }} />
+
+        {/* Financial Metrics Section */}
+        <Box>
+          <h2 style={{ marginTop: 0, marginBottom: '1rem', color: '#667eea' }}>
+            📊 Financial Metrics Analysis
+          </h2>
+          <form className="input-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="ticker">Ticker Symbol</label>
             <input
@@ -94,6 +111,7 @@ function App() {
         )}
 
         {metrics && !loading && <MetricsDisplay metrics={metrics} />}
+        </Box>
       </main>
     </div>
   );

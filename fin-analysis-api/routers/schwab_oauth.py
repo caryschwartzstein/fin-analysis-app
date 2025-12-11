@@ -12,6 +12,9 @@ from config import settings
 
 
 # Initialize router
+# TODO: Rename router prefix from "/api/v1/oauth" to "/api/v1/schwab" after updating
+# redirect URI in Schwab Developer Portal. Current prefix matches registered callback.
+# Schwab has a waiting period before redirect URI changes take effect.
 router = APIRouter(prefix="/api/v1/oauth", tags=["schwab"])
 
 # Initialize token manager and Schwab service
