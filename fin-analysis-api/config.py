@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     schwab_redirect_uri: Optional[str] = None
     schwab_encryption_key: Optional[str] = None
 
+    # Frontend URL for OAuth redirects
+    frontend_url: str = "http://localhost:5173"
+
+    # CORS allowed origins (comma-separated in .env)
+    cors_origins: str = "http://localhost:3000,http://localhost:5173,http://localhost:5174"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

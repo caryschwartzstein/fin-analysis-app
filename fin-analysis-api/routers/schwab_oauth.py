@@ -81,23 +81,23 @@ async def oauth_callback(
     """
     # Handle user denial
     if error:
-        return RedirectResponse(url=f"http://localhost:5173/?schwab=denied&error={error}")
+        return RedirectResponse(url=f"{settings.frontend_url}/?schwab=denied&error={error}")
 
     # Validate code exists
     if not code:
-        return RedirectResponse(url="http://localhost:5173/?schwab=error&message=no_code")
+        return RedirectResponse(url=f"{settings.frontend_url}/?schwab=error&message=no_code")
 
     try:
         # Exchange code for tokens
         tokens = schwab_service.exchange_code_for_tokens(code)
 
         # Redirect to frontend with success
-        return RedirectResponse(url="http://localhost:5173/?schwab=connected")
+        return RedirectResponse(url=f"{settings.frontend_url}/?schwab=connected")
 
     except Exception as e:
         # Redirect to frontend with error
         error_message = str(e).replace(" ", "_")
-        return RedirectResponse(url=f"http://localhost:5173/?schwab=error&message={error_message}")
+        return RedirectResponse(url=f"{settings.frontend_url}/?schwab=error&message={error_message}")
 
 
 @router.get("/status", response_model=ConnectionStatus)

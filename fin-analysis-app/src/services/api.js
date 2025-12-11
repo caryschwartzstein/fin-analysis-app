@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://127.0.0.1:8000/api/v1';
+const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'https://127.0.0.1:8000'}/api/v1`;
 
 export const getStockMetrics = async (ticker, timeframe = 'annual', provider = null) => {
   try {
